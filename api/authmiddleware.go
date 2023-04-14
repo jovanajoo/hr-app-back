@@ -37,6 +37,7 @@ func authMiddleware(secretKey string) gin.HandlerFunc {
 			c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "Invalid credentials format"})
 			return
 		}
+
 		email := emailPassword[0]
 		password := emailPassword[1]
 
@@ -48,7 +49,7 @@ func authMiddleware(secretKey string) gin.HandlerFunc {
 			return
 		}
 		if len(employeeFromDB) == 0 {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized!"})
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized", "message": err.Error()})
 			return
 		}
 		//todo select employee with that email and password from db
@@ -57,9 +58,11 @@ func authMiddleware(secretKey string) gin.HandlerFunc {
 
 		//todo set also email to context
 		organizationID := employeeFromDB[0].OrganizationId
+		isAdmin := employeeFromDB[0].IsAdmin
 
 		c.Set("organizationID", organizationID)
 		c.Set("email", email)
+		c.Set("isAdmin", isAdmin)
 		c.Next()
 
 	}
