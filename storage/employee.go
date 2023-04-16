@@ -48,7 +48,7 @@ func EmployeeRead(query map[string]string) (employees []model.Employee, err erro
 		return nil, err
 	}
 
-	fields := "employeeID, organizationID, firstName, lastName, departmentID, positionID, phoneNumber, email, password, birthDate, gender, address, employedDate, remainingVacationDays, isAdmin"
+	fields := "employeeID, organizationID, firstName, lastName, departmentID, positionID, phoneNumber, email, password, birthDate, gender, address, employedDate, remainingVacationDays, isAdmin, picture"
 
 	if len(query["fields"]) > 0 {
 		fields = query["fields"]
