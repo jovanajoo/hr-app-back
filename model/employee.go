@@ -18,4 +18,5 @@ type Employee struct {
 	EmployedDate          time.Time `db:"employedDate" form:"employed_date" json:"employed_date"`
 	RemainingVacationDays int       `db:"remainingVacationDays" form:"remaining_vacation_days" json:"remaining_vacation_days"`
 	IsAdmin               bool      `db:"isAdmin"`
+	Picture               []byte    `db:"picture" json:"picture"`
 }
