@@ -1,14 +1,38 @@
 package api
 
 import (
+	"fmt"
 	"hr-app-back/model"
 	"hr-app-back/storage"
+	"net/http"
 	"strconv"
 
 	"github.com/gin-gonic/gin"
 )
 
-func OrganizationInsert(c *gin.Context) {
+func OrganizationReadById(c *gin.Context) {
+
+	orgID, ok := c.Get("organizationID")
+	if !ok {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Organization ID not found in context"})
+		return
+	}
+
+	if !isAdmin(c) {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized: user is not an admin"})
+		return
+	}
+
+	organization, err := storage.OrganizationRead(map[string]string{"organizationID": fmt.Sprintf("%d", orgID)})
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve employees"})
+		return
+	}
+	c.JSON(200, gin.H{"status": "success", "data": organization})
+
+}
+
+func OrganizationRegister(c *gin.Context) {
 
 	var organization model.Organization
 
@@ -27,19 +51,6 @@ func OrganizationInsert(c *gin.Context) {
 
 }
 
-func OrganizationGet(c *gin.Context) {
-	var organization []model.Organization
-
-	orgs, err := storage.OrganizationGet(organization)
-	if err != nil {
-		c.JSON(500, gin.H{"status": "error", "message": err.Error()})
-		return
-	}
-
-	c.JSON(200, gin.H{"status": "success", "data": &orgs})
-
-}
-
 func OrganizationUpdate(c *gin.Context) {
 
 	id, err := strconv.Atoi(c.Param("id"))
@@ -48,7 +59,24 @@ func OrganizationUpdate(c *gin.Context) {
 		return
 	}
 
+	orgID, ok := c.Get("organizationID")
+	if !ok {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Organization ID not found in context"})
+		return
+	}
+
+	if !isAdmin(c) {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized: user is not an admin"})
+		return
+	}
+
+	if orgID != id {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Unauthorized: user is not an admin"})
+		return
+	}
+
 	var organization model.Organization
+
 	if err := c.ShouldBindJSON(&organization); err != nil {
 		c.JSON(400, gin.H{"error": err.Error()})
 		return
@@ -70,6 +98,11 @@ func OrganizationDelete(c *gin.Context) {
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
 		c.JSON(500, gin.H{"status": "error", "message": err.Error()})
+		return
+	}
+
+	if !isAdmin(c) {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized: user is not an admin"})
 		return
 	}
 

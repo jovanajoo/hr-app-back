@@ -49,7 +49,7 @@ func authMiddleware(secretKey string) gin.HandlerFunc {
 			return
 		}
 		if len(employeeFromDB) == 0 {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized", "message": err.Error()})
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "Employee is not found"})
 			return
 		}
 		//todo select employee with that email and password from db

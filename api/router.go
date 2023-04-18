@@ -10,17 +10,29 @@ func SetUpRouters() *gin.Engine {
 	protected.Use(authMiddleware("secretkey"))
 
 	// organization
-	r.GET("/organization", OrganizationGet)
-	r.POST("/organization", OrganizationInsert)
-	r.PATCH("organization/:id", OrganizationUpdate)
+	protected.GET("/organization", OrganizationReadById)
+	r.POST("/registration", OrganizationRegister)
+	protected.PATCH("organization/:id", OrganizationUpdate)
 	r.DELETE("/organization/:id", OrganizationDelete)
 
 	// employee
-	protected.GET("/employee", EmployeeGet)
+	protected.GET("/employee", EmployeeReadByOrg)
 	r.POST("/login", EmployeeLogin)
 	protected.POST("/employee", EmployeeInsert)
 	protected.PATCH("employee/:id", EmployeeUpdate)
 	protected.DELETE("employee/:id", EmployeeDelete)
+
+	// leave
+	protected.GET("leaves/status", LeavesStatusRead)
+	protected.POST("request-leave/:id", LeaveCreate)
+	protected.PATCH("request-leave/:id", LeaveUpdate)
+	protected.PATCH("request-leave/:id/status", LeaveStatusAdminUpdate)
+
+	// departments
+	r.GET("departments", ReadDepartments)
+
+	// position
+	r.GET("positions", PositionRead)
 
 	return r
 

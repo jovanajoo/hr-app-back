@@ -4,7 +4,8 @@ import "time"
 
 type Organization struct {
 	Id                int       `db:"organizationID" form:"id" json:"id"`
-	Name              string    `db:"name"  form:"employee_name" json:"employee_name"`
+	FirstName         string    `db:"firstName"  form:"first_name" json:"first_name"`
+	LastName          string    `db:"lastName"  form:"last_name" json:"last_name"`
 	OrganizationName  string    `db:"organizationName"  form:"organization_name" json:"organization_name"`
 	OrganizationEmail string    `db:"organizationEmail"  form:"organization_email" json:"organization_email"`
 	PhoneNumber       int       `db:"phoneNumber" form:"phone_number" json:"phone_number"`
