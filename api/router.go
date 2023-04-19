@@ -17,39 +17,23 @@ func SetUpRouters() *gin.Engine {
 
 	// employee
 	protected.GET("/employee", EmployeeReadByOrg)
-	r.POST("/login", EmployeeLogin)
+	protected.POST("/login", EmployeeLogin)
 	protected.POST("/employee", EmployeeInsert)
 	protected.PATCH("employee/:id", EmployeeUpdate)
 	protected.DELETE("employee/:id", EmployeeDelete)
 
 	// leave
 	protected.GET("leaves/status", LeavesStatusRead)
-	protected.POST("request-leave/:id", LeaveCreate)
+	protected.POST("request-leave", LeaveCreate)
 	protected.PATCH("request-leave/:id", LeaveUpdate)
 	protected.PATCH("request-leave/:id/status", LeaveStatusAdminUpdate)
 
 	// departments
-	r.GET("departments", ReadDepartments)
+	r.GET("departments", DepartmentsRead)
 
 	// position
 	r.GET("positions", PositionRead)
 
 	return r
 
-}
-
-func CORS() gin.HandlerFunc {
-	return func(c *gin.Context) {
-		c.Writer.Header().Set("Access-Control-Allow-Origin", "*")
-		c.Writer.Header().Set("Access-Control-Allow-Credentials", "true")
-		c.Writer.Header().Set("Access-Control-Allow-Headers", "Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization, accept, origin, Cache-Control, X-Requested-With")
-		c.Writer.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS, GET, PATCH, DELETE")
-
-		if c.Request.Method == "OPTIONS" {
-			c.AbortWithStatus(204)
-			return
-		}
-
-		c.Next()
-	}
 }

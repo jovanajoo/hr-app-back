@@ -2,7 +2,6 @@ package api
 
 import (
 	"encoding/base64"
-	"hr-app-back/storage"
 	"net/http"
 	"strings"
 
@@ -22,10 +21,6 @@ func authMiddleware(secretKey string) gin.HandlerFunc {
 			return
 		}
 
-		//todo base64decode
-		//split :
-		//email:password
-
 		decoded, err := base64.StdEncoding.DecodeString(authHeaderParts[1])
 		if err != nil {
 			c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "Invalid base64-encoded credentials"})
@@ -41,26 +36,18 @@ func authMiddleware(secretKey string) gin.HandlerFunc {
 		email := emailPassword[0]
 		password := emailPassword[1]
 
-		tmp := map[string]string{"email": email, "password": password}
-
-		employeeFromDB, err := storage.EmployeeRead(tmp)
+		employeeFromDB, err := authEmployee(email, password)
 		if err != nil {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid email of password"})
+			c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}
-		if len(employeeFromDB) == 0 {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "Employee is not found"})
-			return
-		}
-		//todo select employee with that email and password from db
-		//if len 0, unauthorized
-		//if len 1, set organizaytionID
 
-		//todo set also email to context
-		organizationID := employeeFromDB[0].OrganizationId
-		isAdmin := employeeFromDB[0].IsAdmin
+		organizationID := employeeFromDB.OrganizationId
+		employeeID := employeeFromDB.Id
+		isAdmin := employeeFromDB.IsAdmin
 
 		c.Set("organizationID", organizationID)
+		c.Set("employeeID", employeeID)
 		c.Set("email", email)
 		c.Set("isAdmin", isAdmin)
 		c.Next()

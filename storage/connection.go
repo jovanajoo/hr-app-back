@@ -15,7 +15,7 @@ func ConnectionToDB() (dbr.Session, error) {
 		Passwd:               "",
 		Net:                  "tcp",
 		Addr:                 "127.0.0.1",
-		DBName:               "hrms_oopm",
+		DBName:               "hrms_2",
 		AllowNativePasswords: true,
 		ParseTime:            true,
 	}

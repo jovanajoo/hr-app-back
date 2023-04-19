@@ -7,7 +7,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func ReadDepartments(c *gin.Context) {
+func DepartmentsRead(c *gin.Context) {
 
 	departments, err := storage.DepartmentRead(map[string]string{})
 	if err != nil {

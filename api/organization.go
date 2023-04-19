@@ -91,7 +91,6 @@ func OrganizationUpdate(c *gin.Context) {
 	}
 
 	c.JSON(200, gin.H{"status": "success"})
-
 }
 
 func OrganizationDelete(c *gin.Context) {
@@ -113,5 +112,4 @@ func OrganizationDelete(c *gin.Context) {
 	}
 
 	c.JSON(200, gin.H{"status": "success"})
-
 }

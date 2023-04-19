@@ -5,8 +5,11 @@ import (
 	"fmt"
 	"hr-app-back/model"
 	"hr-app-back/storage"
+	"log"
+	"net/smtp"
 
 	"github.com/gin-gonic/gin"
+	"golang.org/x/crypto/bcrypt"
 )
 
 func getEmployeeIdByContext(c *gin.Context, id int) (*model.Employee, error) {
@@ -54,29 +57,6 @@ func getEmpAndOrgByContext(c *gin.Context) (*[]model.Employee, error) {
 	return &empByOrg, nil
 }
 
-func getEmployeeByContext(c *gin.Context) (*model.Employee, int, error) {
-	orgID, ok := c.Get("organizationID")
-	if !ok {
-		return nil, 0, errors.New("organization ID is not found in the context")
-	}
-
-	email, ok := c.Get("email")
-	if !ok {
-		return nil, 0, errors.New("email not found in context")
-	}
-
-	filter := map[string]string{"organizationID": fmt.Sprintf("%d", orgID), "email": email.(string)}
-	employeeFromDB, err := storage.EmployeeRead(filter)
-	if err != nil {
-		return nil, 0, errors.New("failed to retrieve employee")
-	}
-
-	if len(employeeFromDB) == 0 {
-		return nil, 0, errors.New("employee not found")
-	}
-	return &employeeFromDB[0], orgID.(int), nil
-}
-
 func isAdmin(c *gin.Context) bool {
 	isAdmin, ok := c.Get("isAdmin")
 	if !ok {
@@ -85,12 +65,49 @@ func isAdmin(c *gin.Context) bool {
 	return isAdmin.(bool)
 }
 
-/* func isAuthorized(c *gin.Context, orgID int, id int) bool {
-	employee, err := getEmployeeByContext(c)
-	if err != nil {
-		return false
-	}
+// func isAuthorized(orgID int, id int) bool {
+// 	var employee model.Employee
+// 	if employee.OrganizationId != orgID && employee.Id != id {
+// 		return false
+// 	}
+// 	return true
+// }
 
-	return employee.OrganizationId == orgID && employee.Id == id
+func authEmployee(email string, password string) (*model.Employee, error) {
+
+	employeeFromDB, err := storage.EmployeeRead(map[string]string{"email": email})
+	if err != nil {
+		return nil, errors.New("invalid email")
+	}
+	if len(employeeFromDB) == 0 {
+		return nil, errors.New("employee is not found")
+	}
+	err = bcrypt.CompareHashAndPassword([]byte(employeeFromDB[0].Password), []byte(password))
+	if err != nil {
+		return nil, errors.New("bad Email or Password")
+	}
+	return &employeeFromDB[0], nil
 }
-*/
+
+func sendPasswordEmail(emp *model.Employee, password string) {
+	auth := smtp.PlainAuth("", "milan.tepic221@gmail.com", "qbasglhtdcbqfpkb", "smtp.gmail.com")
+
+	to := []string{"bulatovicj07@gmail.com"}
+
+	msg := []byte("To: bulatovicj07@gmail.com\r\n" +
+		"Subject: Why aren’t you using Mailtrap yet?\r\n" +
+		"\r\n" +
+		"Name:" + emp.FirstName + "\n" +
+		"Last Name:" + emp.LastName + "\n" +
+		"Email:" + emp.Email + "\n" +
+		"Address:" + emp.Address + "\n" +
+		"\r\n" +
+		"YOUR NEW PASSWORD " + password +
+		"Here’s the space for our great sales pitch\r\n")
+
+	err := smtp.SendMail("smtp.gmail.com:587", auth, "milan.tepic221@gmail.com", to, msg)
+
+	if err != nil {
+		log.Fatal(err)
+	}
+}

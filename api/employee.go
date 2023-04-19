@@ -9,6 +9,7 @@ import (
 	"strconv"
 
 	"github.com/gin-gonic/gin"
+	"golang.org/x/crypto/bcrypt"
 )
 
 func EmployeeLogin(c *gin.Context) {
@@ -17,8 +18,6 @@ func EmployeeLogin(c *gin.Context) {
 		c.JSON(400, gin.H{"status": "error", "message": err.Error()})
 		return
 	}
-
-	// Get the employee from the database by email
 
 	tmp := map[string]string{"email": employee.Email, "password": employee.Password}
 	employees, err := storage.EmployeeRead(tmp)
@@ -35,7 +34,6 @@ func EmployeeLogin(c *gin.Context) {
 	authToken := base64.StdEncoding.EncodeToString([]byte(employees[0].Email + ":" + employees[0].Password))
 
 	c.JSON(http.StatusOK, gin.H{"token": authToken})
-
 }
 
 func EmployeeReadByOrg(c *gin.Context) {
@@ -47,7 +45,6 @@ func EmployeeReadByOrg(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"status": "success", "data": empByOrg})
-
 }
 
 func EmployeeInsert(c *gin.Context) {
@@ -71,13 +68,21 @@ func EmployeeInsert(c *gin.Context) {
 	}
 
 	employee.OrganizationId = orgID.(int)
-	employee.Password = utility.RandomPassword(8)
-
-	err := storage.EmployeeInsert(&employee)
+	var newPassword = utility.RandomPassword(8)
+	hash, err := bcrypt.GenerateFromPassword([]byte(newPassword), 10)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"status": "error", "message": err.Error()})
 		return
 	}
+	employee.Password = string(hash)
+
+	err = storage.EmployeeInsert(&employee)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"status": "error", "message": err.Error()})
+		return
+	}
+
+	sendPasswordEmail(&employee, newPassword)
 
 	c.JSON(201, gin.H{"status": "Created"})
 }

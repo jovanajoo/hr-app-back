@@ -33,20 +33,24 @@ func LeaveRead(query map[string]string) (leave []model.Leave, err error) {
 	return
 }
 
-func LeaveCreate(leave *model.Leave) error {
+func LeaveCreate(leave *model.Leave) (int, error) {
 	session, err := ConnectionToDB()
 	if err != nil {
 		fmt.Println("Error in connecting:", err)
-		return err
+		return 0, err
 	}
 
-	_, err = session.InsertInto("employee_leave").Columns("leaveID", "categoryName", "employeeID", "organizationID", "startDate", "endDate", "total", "description", "status").Record(leave).Exec()
+	result, err := session.InsertInto("employee_leave").Columns("leaveID", "categoryName", "employeeID", "organizationID", "startDate", "endDate", "total", "description", "status").Record(leave).Exec()
 	if err != nil {
 		fmt.Println("Error in inserting data:", err)
-		return err
+		return 0, err
 	}
 
-	return nil
+	id, err := result.LastInsertId()
+	if err != nil {
+		return 0, err
+	}
+	return int(id), nil
 }
 
 func LeaveUpdate(leave *model.Leave) error {

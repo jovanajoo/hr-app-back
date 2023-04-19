@@ -12,84 +12,71 @@ import (
 
 func LeaveCreate(c *gin.Context) {
 
-	id, err := strconv.Atoi(c.Param("id"))
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"status": "error", "message": err.Error()})
-		return
-	}
-
-	employee, orgID, err := getEmployeeByContext(c)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
-	// ne znam da l mi je potreban bas ovaj deo orgID jer ja svakako trazim employee na osnovu orgID i mejla
-	if employee.OrganizationId != orgID || employee.Id != id {
-		c.JSON(http.StatusInternalServerError, gin.H{"status": "error", "message": "you are not authorized to modify this resource"})
-		return
-	}
+	orgID := c.GetInt("organizationID")
+	empID := c.GetInt("employeeID")
 
 	var leave model.Leave
 	if err := c.ShouldBindJSON(&leave); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"status": "error", "message": err.Error()})
 		return
 	}
-	leave.EmployeeId = id
-	leave.OrganizationId = employee.OrganizationId
+
+	leave.EmployeeId = empID
+	leave.OrganizationId = orgID
 	leave.Total = int(leave.EndDate.Sub(leave.StartDate).Hours() / 24)
 	leave.Status = "pending"
 
-	err = storage.LeaveCreate(&leave)
+	result, err := storage.LeaveCreate(&leave)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"status": "error", "message": err.Error()})
 		return
 	}
 
-	c.JSON(http.StatusCreated, gin.H{"status": "Created", "message": "Leave request is submitted"})
+	c.JSON(http.StatusCreated, gin.H{"id": result}) //todo return in response leaveID
 }
 
 func LeavesStatusRead(c *gin.Context) {
 
-	employee, orgID, err := getEmployeeByContext(c)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
+	orgID := c.GetInt("organizationID")
+	empID := c.GetInt("employeeID")
 
 	status := c.Query("status")
 
 	var leaveRequests []model.Leave
-
+	// svaki zaposleni moze da vidi svoje leave reqeuste, a admin moze da vidi sve leave requeste iz svoje organizacije
 	filter := map[string]string{"organizationID": fmt.Sprintf("%d", orgID)}
-	if status != "" || !isAdmin(c) {
+	if status != "" && isAdmin(c) {
 		filter["status"] = status
 	}
 	if !isAdmin(c) {
-		filter["employeeID"] = fmt.Sprintf("%d", employee.Id)
+		filter["employeeID"] = fmt.Sprintf("%d", empID)
 	}
 
-	leaveRequests, err = storage.LeaveRead(filter)
+	leaveRequests, err := storage.LeaveRead(filter)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Falied to retrvie leave requests"})
 		return
 	}
 
 	c.JSON(http.StatusOK, gin.H{"status": "success", "data": leaveRequests})
-
 }
 
 func LeaveUpdate(c *gin.Context) {
+
 	leaveID, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"status": "error", "message": err.Error()})
 		return
 	}
 
-	employee, _, err := getEmployeeByContext(c)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
+	orgID := c.GetInt("organizationID")
+	empID := c.GetInt("employeeID")
+
+	// employee, _, err := getEmployeeByContext(c)
+	// if err != nil {
+	// 	c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+	// 	return
+	// }
 
 	leave, err := getLeaveRequest(c, leaveID)
 	if err != nil {
@@ -97,18 +84,19 @@ func LeaveUpdate(c *gin.Context) {
 		return
 	}
 
-	if leave.EmployeeId != employee.Id || leave.OrganizationId != employee.OrganizationId {
+	if leave.OrganizationId != orgID && leave.EmployeeId != empID {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "You are not authorized to update this leave request"})
 		return
 	}
+	// todo check if is admin
 
 	if err := c.ShouldBindJSON(&leave); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	leave.EmployeeId = employee.Id
-	leave.OrganizationId = employee.OrganizationId
+	leave.EmployeeId = empID
+	leave.OrganizationId = orgID
 	leave.Total = int(leave.EndDate.Sub(leave.StartDate).Hours() / 24)
 	leave.Status = "pending"
 
@@ -118,7 +106,7 @@ func LeaveUpdate(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"status": "success", "message": "Leave request updated successfully"})
+	c.JSON(http.StatusNoContent, gin.H{"status": "success", "message": "Leave request updated successfully"})
 
 }
 
@@ -129,11 +117,8 @@ func LeaveStatusAdminUpdate(c *gin.Context) {
 		return
 	}
 
-	employee, _, err := getEmployeeByContext(c)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
+	orgID := c.GetInt("organizationID")
+	empID := c.GetInt("employeeID")
 
 	if !isAdmin(c) {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "You are not authorized to update status of the leave request"})
@@ -146,23 +131,23 @@ func LeaveStatusAdminUpdate(c *gin.Context) {
 		return
 	}
 
-	if leaveRequest.OrganizationId != employee.OrganizationId {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "You are not authorized to update status of leave request from another organziation"})
+	if leaveRequest.OrganizationId != orgID && leaveRequest.EmployeeId != empID {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "You are not authorized to update this leave request"})
 		return
 	}
 
-	var updateLeave model.Leave
-	if err := c.ShouldBindJSON(&updateLeave); err != nil {
+	var updatedLeave model.Leave
+	if err := c.ShouldBindJSON(&updatedLeave); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"status": "error", "message": err.Error()})
 		return
 	}
 
-	if updateLeave.Status != "approved" && updateLeave.Status != "rejected" {
+	if updatedLeave.Status != "approved" && updatedLeave.Status != "rejected" {
 		c.JSON(http.StatusBadRequest, gin.H{"status": "error", "message": "Invalid status"})
 		return
 	}
 
-	leaveRequest.Status = updateLeave.Status
+	leaveRequest.Status = updatedLeave.Status
 
 	err = storage.LeaveUpdateStatus(leaveRequest)
 	if err != nil {
@@ -170,24 +155,5 @@ func LeaveStatusAdminUpdate(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"status": "success", "message": "Leave request updated successfully"})
-
-}
-
-func LeaveReadAll(c *gin.Context) {
-
-	orgID, ok := c.Get("organizationID")
-	if !ok {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Organization ID not found in context"})
-		return
-	}
-
-	tmp := map[string]string{"organizationID": fmt.Sprintf("%d", orgID)}
-	leaves, err := storage.LeaveRead(tmp)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve employees", "message": err.Error()})
-		return
-	}
-	c.JSON(200, gin.H{"status": "success", "data": leaves})
-
+	c.JSON(http.StatusNoContent, gin.H{"status": "success", "message": "Leave request updated successfully"})
 }
