@@ -13,25 +13,20 @@ import (
 )
 
 func EmployeeLogin(c *gin.Context) {
-	var employee model.Employee
-	if err := c.ShouldBindJSON(&employee); err != nil {
+
+	var employeeFromDB model.Employee
+
+	if err := c.ShouldBindJSON(&employeeFromDB); err != nil {
 		c.JSON(400, gin.H{"status": "error", "message": err.Error()})
 		return
 	}
 
-	tmp := map[string]string{"email": employee.Email, "password": employee.Password}
-	employees, err := storage.EmployeeRead(tmp)
+	employee, err := authEmployee(employeeFromDB.Email, employeeFromDB.Password)
 	if err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid email of password"})
+		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-
-	if len(employees) == 0 {
-		//todo status code unathorized
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
-		return
-	}
-	authToken := base64.StdEncoding.EncodeToString([]byte(employees[0].Email + ":" + employees[0].Password))
+	authToken := base64.StdEncoding.EncodeToString([]byte(employee.Email + ":" + employee.Password))
 
 	c.JSON(http.StatusOK, gin.H{"token": authToken})
 }

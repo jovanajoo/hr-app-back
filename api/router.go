@@ -17,7 +17,7 @@ func SetUpRouters() *gin.Engine {
 
 	// employee
 	protected.GET("/employee", EmployeeReadByOrg)
-	protected.POST("/login", EmployeeLogin)
+	r.POST("/login", EmployeeLogin)
 	protected.POST("/employee", EmployeeInsert)
 	protected.PATCH("employee/:id", EmployeeUpdate)
 	protected.DELETE("employee/:id", EmployeeDelete)

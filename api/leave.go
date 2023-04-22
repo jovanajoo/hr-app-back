@@ -26,13 +26,13 @@ func LeaveCreate(c *gin.Context) {
 	leave.Total = int(leave.EndDate.Sub(leave.StartDate).Hours() / 24)
 	leave.Status = "pending"
 
-	result, err := storage.LeaveCreate(&leave)
+	id, err := storage.LeaveCreate(&leave)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"status": "error", "message": err.Error()})
 		return
 	}
 
-	c.JSON(http.StatusCreated, gin.H{"id": result}) //todo return in response leaveID
+	c.JSON(http.StatusCreated, gin.H{"id": id}) //todo return in response leaveID
 }
 
 func LeavesStatusRead(c *gin.Context) {
@@ -41,14 +41,17 @@ func LeavesStatusRead(c *gin.Context) {
 	empID := c.GetInt("employeeID")
 
 	status := c.Query("status")
+	eid := c.Query("employeeID")
 
 	var leaveRequests []model.Leave
 	// svaki zaposleni moze da vidi svoje leave reqeuste, a admin moze da vidi sve leave requeste iz svoje organizacije
 	filter := map[string]string{"organizationID": fmt.Sprintf("%d", orgID)}
-	if status != "" && isAdmin(c) {
+	if status != "" {
 		filter["status"] = status
 	}
-	if !isAdmin(c) {
+	if eid != "" {
+		filter["employeeID"] = eid
+	} else if !isAdmin(c) {
 		filter["employeeID"] = fmt.Sprintf("%d", empID)
 	}
 
@@ -72,12 +75,6 @@ func LeaveUpdate(c *gin.Context) {
 	orgID := c.GetInt("organizationID")
 	empID := c.GetInt("employeeID")
 
-	// employee, _, err := getEmployeeByContext(c)
-	// if err != nil {
-	// 	c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-	// 	return
-	// }
-
 	leave, err := getLeaveRequest(c, leaveID)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -88,9 +85,8 @@ func LeaveUpdate(c *gin.Context) {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "You are not authorized to update this leave request"})
 		return
 	}
-	// todo check if is admin
 
-	if err := c.ShouldBindJSON(&leave); err != nil {
+	if err := c.ShouldBindJSON(&leave); err != nil { //todo first bind then go to db and merge leave struct
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
